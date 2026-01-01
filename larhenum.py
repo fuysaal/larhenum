@@ -481,34 +481,39 @@ def main():
         for i, domain_name in enumerate(sorted(all_domains)[:10]):
             print(f"  {Fore.GREEN}{i+1:2}.{Style.RESET_ALL} {domain_name}")
 
+
     if total_domains > 0:
-        choice = input(f"\n{Fore.YELLOW}[?]{Style.RESET_ALL} Check live subdomains with HTTPX? (y/n): ")
-        if choice.lower() == 'y':
-            success, count = run_tool(
-                f"httpx -l all_subs.txt -title -status-code -tech-detect -silent -o live_subs.txt",
-                "HTTPX Live Check"
-            )
+        print(f"\n{Fore.CYAN}[*] Running HTTPX for live subdomains...{Style.RESET_ALL}")
+        
+       
+        success, count = run_tool(
+            f"httpx -l all_subs.txt -title -status-code -tech-detect -silent -o live_subs.txt",
+            "HTTPX Live Check"
+        )
 
-            if success and os.path.exists('live_subs.txt'):
-                with open('live_subs.txt', 'r') as f:
-                    live_count = len(f.readlines())
-                print(f"\n{Fore.GREEN}[*] {live_count} live subdomains found!{Style.RESET_ALL}")
+        if success and os.path.exists('live_subs.txt'):
+            with open('live_subs.txt', 'r') as f:
+                live_count = len(f.readlines())
+            print(f"\n{Fore.GREEN}[*] {live_count} live subdomains found!{Style.RESET_ALL}")
 
-            success, count = run_tool(
-                f"httpx -l all_subs.txt -title -status-code -tech-detect -json -silent -o httpx_results.json",
-                "HTTPX JSON Export"
-            )
+       
+        success, count = run_tool(
+            f"httpx -l all_subs.txt -title -status-code -tech-detect -json -silent -o httpx_results.json",
+            "HTTPX JSON Export"
+        )
 
-            if success and os.path.exists('httpx_results.json'):
+        if success and os.path.exists('httpx_results.json'):
+            
+            entries = read_httpx_json_properly('httpx_results.json')
+            if entries:
+                print(f"\n{Fore.GREEN}[*] JSON results saved: {len(entries)} entries{Style.RESET_ALL}")
+
                 
-                entries = read_httpx_json_properly('httpx_results.json')
-                if entries:
-                    print(f"\n{Fore.GREEN}[*] JSON results saved: {len(entries)} entries{Style.RESET_ALL}")
-
-                   
-                    analyze_httpx_json('httpx_results.json')
-                else:
-                    print(f"{Fore.RED}[!] Could not read JSON file properly{Style.RESET_ALL}")
+                analyze_httpx_json('httpx_results.json')
+            else:
+                print(f"{Fore.RED}[!] Could not read JSON file properly{Style.RESET_ALL}")
+    else:
+        print(f"\n{Fore.YELLOW}[!] No subdomains found, skipping HTTPX{Style.RESET_ALL}")
 
     print(f"\n{Fore.CYAN}[*] Recon completed!{Style.RESET_ALL}")
     print(f"{Fore.GREEN}[*] Output directory: {os.getcwd()}{Style.RESET_ALL}")
