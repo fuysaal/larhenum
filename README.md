@@ -106,17 +106,17 @@ $ ./larhenum.py
 
 ### Workflow
 
-1-)Enter Target Domain: Provide the target domain (e.g., example.com)
+   ● Enter Target Domain: Provide the target domain (e.g., example.com)
 
-2-)Subdomain Enumeration: Tool gathers subdomains from multiple sources
+   ● Subdomain Enumeration: Tool gathers subdomains from multiple sources
 
-3-)Result Merging: Combines and deduplicates all subdomains
+   ● Result Merging: Combines and deduplicates all subdomains
 
-4-)Live Checking: Optional HTTPX scan to find live subdomains
+   ● Live Checking: Optional HTTPX scan to find live subdomains
 
-5-)Status Code Analysis: Categorizes results by HTTP status codes
+   ● Status Code Analysis: Categorizes results by HTTP status codes
 
-6-)Organization: Creates organized directory structure
+   ● Organization: Creates organized directory structure
 
 ### Output Structure
 ```bash
@@ -137,31 +137,31 @@ recon_example.com_20231215_143022/
 
 The tool runs automatically through all stages:
 
-  AssetFinder: Subdomain enumeration
+   ● AssetFinder: Subdomain enumeration
 
-  SubFinder: Comprehensive subdomain discovery
+   ● SubFinder: Comprehensive subdomain discovery
 
-  Samoscout: Additional subdomain source
+   ● Samoscout: Additional subdomain source
 
-  CRT.sh: Certificate transparency logs
+   ● CRT.sh: Certificate transparency logs
 
-  HTTPX: Live subdomain checking and analysis
+   ● HTTPX: Live subdomain checking and analysis
 
 ###  Status Code Analysis
 
 The tool automatically analyzes HTTPX JSON output and organizes URLs:
 
-  200 OK: Working websites
+   ● 200 OK: Working websites
 
-  301/302: Redirects
+   ● 301/302: Redirects
 
-  401: Authentication required
+   ● 401: Authentication required
 
-  403: Access forbidden
+   ● 403: Access forbidden
 
-  404: Not found
+   ● 404: Not found
 
-  Others: Interesting status codes (500, 503, etc.)
+   ● Others: Interesting status codes (500, 503, etc.)
 
 ### Troubleshooting
 
