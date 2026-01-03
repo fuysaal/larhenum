@@ -273,6 +273,110 @@ install_kiterunner() {
     return 0
 }
 
+install_security_tools() {
+    print_step "Installing security tools to Larhen_Tools..."
+    
+    LARHEN_TOOLS_DIR="$HOME/Larhen_Tools"
+    
+    # Larhen_Tools dizinini oluştur
+    mkdir -p "$LARHEN_TOOLS_DIR"
+    
+    # Corsy kurulumu
+    print_step "Installing Corsy..."
+    CORSY_DIR="$LARHEN_TOOLS_DIR/Corsy"
+    if [ -d "$CORSY_DIR" ]; then
+        print_success "Corsy already installed"
+    else
+        if git clone https://github.com/s0md3v/Corsy.git "$CORSY_DIR" 2>/dev/null; then
+            print_success "Corsy installed"
+            # requirements.txt'i kontrol et ve kur
+            if [ -f "$CORSY_DIR/requirements.txt" ]; then
+                print_step "Installing Corsy dependencies..."
+                if pip3 install -r "$CORSY_DIR/requirements.txt" 2>&1; then
+                    print_success "Corsy dependencies installed"
+                else
+                    print_warning "Failed to install Corsy dependencies"
+                fi
+            fi
+        else
+            print_error "Failed to install Corsy"
+        fi
+    fi
+    
+    # LinkFinder kurulumu
+    print_step "Installing LinkFinder..."
+    LINKFINDER_DIR="$LARHEN_TOOLS_DIR/LinkFinder"
+    if [ -d "$LINKFINDER_DIR" ]; then
+        print_success "LinkFinder already installed"
+    else
+        if git clone https://github.com/GerbenJavado/LinkFinder.git "$LINKFINDER_DIR" 2>/dev/null; then
+            print_success "LinkFinder installed"
+            # requirements.txt'i kontrol et ve kur
+            if [ -f "$LINKFINDER_DIR/requirements.txt" ]; then
+                print_step "Installing LinkFinder dependencies..."
+                if pip3 install -r "$LINKFINDER_DIR/requirements.txt" 2>&1; then
+                    print_success "LinkFinder dependencies installed"
+                else
+                    print_warning "Failed to install LinkFinder dependencies"
+                fi
+            fi
+            # setup.py varsa kur
+            if [ -f "$LINKFINDER_DIR/setup.py" ]; then
+                print_step "Running LinkFinder setup..."
+                cd "$LINKFINDER_DIR" && pip3 install . 2>&1 && cd - > /dev/null
+                print_success "LinkFinder setup completed"
+            fi
+        else
+            print_error "Failed to install LinkFinder"
+        fi
+    fi
+    
+    # SecretFinder kurulumu
+    print_step "Installing SecretFinder..."
+    SECRETFINDER_DIR="$LARHEN_TOOLS_DIR/SecretFinder"
+    if [ -d "$SECRETFINDER_DIR" ]; then
+        print_success "SecretFinder already installed"
+    else
+        if git clone https://github.com/m4ll0k/SecretFinder.git "$SECRETFINDER_DIR" 2>/dev/null; then
+            print_success "SecretFinder installed"
+            # requirements.txt'i kontrol et ve kur
+            if [ -f "$SECRETFINDER_DIR/requirements.txt" ]; then
+                print_step "Installing SecretFinder dependencies..."
+                if pip3 install -r "$SECRETFINDER_DIR/requirements.txt" 2>&1; then
+                    print_success "SecretFinder dependencies installed"
+                else
+                    print_warning "Failed to install SecretFinder dependencies"
+                fi
+            fi
+        else
+            print_error "Failed to install SecretFinder"
+        fi
+    fi
+    
+    # Araçların çalıştırılabilir olduğundan emin ol
+    print_step "Making tools executable..."
+    
+    # Corsy'yi çalıştırılabilir yap
+    if [ -f "$CORSY_DIR/corsy.py" ]; then
+        chmod +x "$CORSY_DIR/corsy.py"
+        print_success "Made corsy.py executable"
+    fi
+    
+    # LinkFinder'ı çalıştırılabilir yap
+    if [ -f "$LINKFINDER_DIR/linkfinder.py" ]; then
+        chmod +x "$LINKFINDER_DIR/linkfinder.py"
+        print_success "Made linkfinder.py executable"
+    fi
+    
+    # SecretFinder'ı çalıştırılabilir yap
+    if [ -f "$SECRETFINDER_DIR/SecretFinder.py" ]; then
+        chmod +x "$SECRETFINDER_DIR/SecretFinder.py"
+        print_success "Made SecretFinder.py executable"
+    fi
+    
+    print_success "Security tools installation completed"
+}
+
 install_go_tools() {
     print_step "Installing Go tools..."
     
@@ -329,7 +433,8 @@ install_python_deps() {
         print_step "Using pip3..."
         if pip3 install colorama 2>&1; then
             print_success "colorama installed with pip3"
-            return 0
+        else
+            print_warning "Failed to install colorama with pip3"
         fi
     fi
     
@@ -337,7 +442,8 @@ install_python_deps() {
         print_step "Trying pip..."
         if pip install colorama 2>&1; then
             print_success "colorama installed with pip"
-            return 0
+        else
+            print_warning "Failed to install colorama with pip"
         fi
     fi
     
@@ -556,6 +662,33 @@ verify_installation() {
     fi
     
     echo
+    echo "Security Tools:"
+    echo "---------------"
+    
+    LARHEN_TOOLS_DIR="$HOME/Larhen_Tools"
+    
+    # Corsy kontrolü
+    if [ -d "$LARHEN_TOOLS_DIR/Corsy" ] && [ -f "$LARHEN_TOOLS_DIR/Corsy/corsy.py" ]; then
+        echo -e "  ${GREEN}✓${NC} Corsy"
+    else
+        echo -e "  ${RED}✗${NC} Corsy"
+    fi
+    
+    # LinkFinder kontrolü
+    if [ -d "$LARHEN_TOOLS_DIR/LinkFinder" ] && [ -f "$LARHEN_TOOLS_DIR/LinkFinder/linkfinder.py" ]; then
+        echo -e "  ${GREEN}✓${NC} LinkFinder"
+    else
+        echo -e "  ${RED}✗${NC} LinkFinder"
+    fi
+    
+    # SecretFinder kontrolü
+    if [ -d "$LARHEN_TOOLS_DIR/SecretFinder" ] && [ -f "$LARHEN_TOOLS_DIR/SecretFinder/SecretFinder.py" ]; then
+        echo -e "  ${GREEN}✓${NC} SecretFinder"
+    else
+        echo -e "  ${RED}✗${NC} SecretFinder"
+    fi
+    
+    echo
     echo "Wordlists:"
     echo "----------"
     
@@ -586,6 +719,12 @@ show_usage() {
     echo "  1. Restart your terminal or run:"
     echo "     source ~/.bashrc"
     echo "  2. Run: larhenum"
+    echo
+    echo -e "${CYAN}Security tools location:${NC}"
+    echo "  ~/Larhen_Tools/"
+    echo "    ├── Corsy/"
+    echo "    ├── LinkFinder/"
+    echo "    └── SecretFinder/"
     echo
     echo -e "${CYAN}Wordlists location:${NC}"
     echo "  ~/Larhen_Tools/wordlists/"
@@ -621,6 +760,7 @@ main() {
     install_go_tools
     install_python_deps
     download_kiterunner_wordlists
+    install_security_tools  # Yeni eklenen fonksiyon
     setup_tool
     
     echo
