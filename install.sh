@@ -1,27 +1,37 @@
 #!/bin/bash
 
-# Advanced Recon Tool - Installation Script
-# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+CYAN='\033[0;36m'
+NC='\033[0m'
 
 print_banner() {
+    clear
     echo -e "${RED}"
-    echo "$$\              $$\ $$$$$$$\  $$\ "
-    echo "$$ |             $  |$$  __$$\ $$ |"
-    echo "$$ |      $$$$$$\_/ $$ |  $$ |$$$$$$$\   $$$$$$\  $$$$$$$\ "
-    echo "$$ |      \____$$\   $$$$$$$  |$$  __$$\ $$  __$$\ $$  __$$\ "
-    echo "$$ |      $$$$$$$ |  $$  __$$< $$ |  $$ |$$$$$$$$ |$$ |  $$ |"
-    echo "$$ |     $$  __$$ |  $$ |  $$ |$$ |  $$ |$$   ____|$$ |  $$ |"
-    echo "$$$$$$$$\\$$$$$$$ |  $$ |  $$ |$$ |  $$ |\$$$$$$$\ $$ |  $$ |"
-    echo "\________|\_______|  \__|  \__|\__|  \__| \_______|\__|  \__|"
+    cat << "EOF"
+    
+ _          _ ____  _                                                         
+| |    __ _( )  _ \| |__   ___ _ __  _   _ _ __ ___                           
+| |   / _` |/| |_) | '_ \ / _ \ '_ \| | | | '_ ` _ \                          
+| |__| (_| | |  _ <| | | |  __/ | | | |_| | | | | | |                         
+|_____\__,_| |_| \_\_| |_|\___|_| |_|\__,_|_| |_| |_|       _   _             
+                          |_ _|_ __  ___| |_ __ _| | | __ _| |_(_) ___  _ __  
+                           | || '_ \/ __| __/ _` | | |/ _` | __| |/ _ \| '_ \ 
+                           | || | | \__ \ || (_| | | | (_| | |_| | (_) | | | |
+                          |___|_| |_|___/\__\__,_|_|_|\__,_|\__|_|\___/|_| |_|
+                                                                                                                                       
+                                                                                                                                                                                                                                                                    
+EOF
+    echo -e "${NC}${YELLOW}"
+    echo "╔══════════════════════════════════════════╗"
+    echo "║         Advanced Reconnaissance Tool     ║"
+    echo "╚══════════════════════════════════════════╝"
     echo -e "${NC}"
-    echo -e "${YELLOW}╔══════════════════════════════════════════╗${NC}"
-    echo -e "${YELLOW}║         Advanced Reconnaissance Tool     ║${NC}"
-    echo -e "${YELLOW}╚══════════════════════════════════════════╝${NC}"
+    echo -e "${CYAN}Version: 1.0.0${NC}"
+    echo -e "${CYAN}Author: La'Rhen${NC}"
+    echo "════════════════════════════════════════════"
     echo
 }
 
@@ -46,6 +56,20 @@ check_go() {
     if command -v go &> /dev/null; then
         go_version=$(go version | awk '{print $3}')
         print_success "Go is installed: $go_version"
+        
+        if [ -z "$(go env GOPATH)" ]; then
+            print_warning "GOPATH is not set. Setting GOPATH..."
+            export GOPATH="$HOME/go"
+            export PATH="$PATH:$GOPATH/bin"
+            if [ -f ~/.bashrc ]; then
+                echo 'export GOPATH="$HOME/go"' >> ~/.bashrc
+                echo 'export PATH="$PATH:$GOPATH/bin"' >> ~/.bashrc
+            fi
+            if [ -f ~/.zshrc ]; then
+                echo 'export GOPATH="$HOME/go"' >> ~/.zshrc
+                echo 'export PATH="$PATH:$GOPATH/bin"' >> ~/.zshrc
+            fi
+        fi
         return 0
     else
         print_error "Go is not installed"
@@ -68,213 +92,355 @@ check_python() {
 install_go_tools() {
     print_step "Installing Go tools..."
     
+    export PATH="$PATH:$(go env GOPATH)/bin"
+    
     tools=(
         "github.com/tomnomnom/assetfinder@latest"
         "github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest"
         "github.com/tomnomnom/anew@latest"
         "github.com/samogod/samoscout@latest"
         "github.com/projectdiscovery/httpx/cmd/httpx@latest"
+        "github.com/assetnote/kiterunner/cmd/kr@latest"
     )
     
     for tool in "${tools[@]}"; do
         tool_name=$(echo $tool | awk -F'/' '{print $NF}' | awk -F'@' '{print $1}')
         print_step "Installing $tool_name..."
         
-        if go install $tool 2>/dev/null; then
+        if command -v $tool_name &> /dev/null; then
+            print_success "$tool_name is already installed"
+            continue
+        fi
+        
+        if timeout 300 go install $tool 2>&1; then
             print_success "$tool_name installed successfully"
-            
-            # Add to PATH if not already
-            if [ ! -f ~/.bashrc ] || ! grep -q "$tool_name" ~/.bashrc; then
-                echo "export PATH=\$PATH:\$(go env GOPATH)/bin" >> ~/.bashrc
-            fi
         else
             print_error "Failed to install $tool_name"
+            print_warning "Will continue with installation..."
         fi
     done
     
-    # Source bashrc
     if [ -f ~/.bashrc ]; then
-        source ~/.bashrc
+        if ! grep -q "go env GOPATH" ~/.bashrc; then
+            echo 'export PATH="$PATH:$(go env GOPATH)/bin"' >> ~/.bashrc
+        fi
+    fi
+    
+    if [ -f ~/.zshrc ]; then
+        if ! grep -q "go env GOPATH" ~/.zshrc; then
+            echo 'export PATH="$PATH:$(go env GOPATH)/bin"' >> ~/.zshrc
+        fi
     fi
 }
 
 install_python_deps() {
     print_step "Installing Python dependencies..."
     
-    if pip3 install colorama 2>/dev/null; then
-        print_success "Python dependencies installed"
-    else
-        print_warning "Could not install Python dependencies with pip3"
-        print_step "Trying pip..."
-        if pip install colorama 2>/dev/null; then
-            print_success "Python dependencies installed with pip"
-        else
-            print_error "Failed to install Python dependencies"
+    if command -v pip3 &> /dev/null; then
+        print_step "Using pip3..."
+        if pip3 install colorama 2>&1; then
+            print_success "colorama installed with pip3"
+            return 0
         fi
     fi
+    
+    if command -v pip &> /dev/null; then
+        print_step "Trying pip..."
+        if pip install colorama 2>&1; then
+            print_success "colorama installed with pip"
+            return 0
+        fi
+    fi
+    
+    if python3 -m pip install colorama 2>&1; then
+        print_success "colorama installed with python3 -m pip"
+        return 0
+    fi
+    
+    print_error "Failed to install colorama"
+    print_warning "You may need to install it manually: pip3 install colorama"
+    return 1
 }
 
 install_system_deps() {
     print_step "Installing system dependencies..."
     
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        # Linux
         if command -v apt &> /dev/null; then
-            # Debian/Ubuntu
             sudo apt update
-            sudo apt install -y curl jq git python3 python3-pip
+            sudo apt install -y curl wget jq git python3 python3-pip python3-venv arjun tar gzip
             print_success "System dependencies installed (APT)"
         elif command -v yum &> /dev/null; then
-            # RHEL/CentOS
-            sudo yum install -y curl jq git python3 python3-pip
+            sudo yum install -y curl wget jq git python3 python3-pip tar gzip
+            sudo pip3 install arjun
             print_success "System dependencies installed (YUM)"
         elif command -v pacman &> /dev/null; then
-            # Arch
-            sudo pacman -Syu --noconfirm curl jq git python python-pip
+            sudo pacman -Syu --noconfirm curl wget jq git python python-pip tar gzip
+            sudo pip install arjun
             print_success "System dependencies installed (Pacman)"
-        else
-            print_warning "Unknown package manager. Please install manually:"
-            print_warning "curl, jq, git, python3, python3-pip"
         fi
     elif [[ "$OSTYPE" == "darwin"* ]]; then
-        # macOS
         if command -v brew &> /dev/null; then
-            brew install curl jq git python3
+            brew install curl wget jq git python3
+            pip3 install arjun
             print_success "System dependencies installed (Homebrew)"
-        else
-            print_warning "Homebrew not found. Please install manually:"
-            print_warning "brew install curl jq git python3"
         fi
-    else
-        print_warning "Unsupported OS. Please install manually:"
-        print_warning "curl, jq, git, python3, python3-pip"
     fi
 }
 
 setup_tool() {
     print_step "Setting up Advanced Recon Tool..."
     
-    # Make the script executable
-    if [ -f "advanced_recon.py" ]; then
-        chmod +x advanced_recon.py
-        print_success "Made advanced_recon.py executable"
-        
-        # Create symbolic link in /usr/local/bin if possible
-        if [ -d "/usr/local/bin" ] && [ -w "/usr/local/bin" ]; then
-            sudo ln -sf "$(pwd)/advanced_recon.py" /usr/local/bin/advanced_recon
-            print_success "Created symbolic link: /usr/local/bin/advanced_recon"
-        else
-            # Add to ~/.local/bin
-            if [ -d ~/.local/bin ]; then
-                ln -sf "$(pwd)/advanced_recon.py" ~/.local/bin/advanced_recon
-                print_success "Created symbolic link: ~/.local/bin/advanced_recon"
-            else
-                mkdir -p ~/.local/bin
-                ln -sf "$(pwd)/advanced_recon.py" ~/.local/bin/advanced_recon
-                print_success "Created ~/.local/bin and symbolic link"
-            fi
-        fi
+    if [ ! -f "larhenum.py" ]; then
+        print_error "larhenum.py not found!"
+        return 1
     fi
+    
+    chmod +x larhenum.py
+    print_success "Made larhenum.py executable"
+    
+    if sudo ln -sf "$(pwd)/larhenum.py" /usr/local/bin/larhenum 2>/dev/null; then
+        print_success "Installed to /usr/local/bin/larhenum"
+    else
+        mkdir -p ~/.local/bin
+        ln -sf "$(pwd)/larhenum.py" ~/.local/bin/larhenum
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc 2>/dev/null
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc 2>/dev/null
+        print_success "Installed to ~/.local/bin/larhenum"
+    fi
+    
+    return 0
+}
+
+download_kiterunner_wordlists() {
+    print_step "Downloading Kiterunner wordlists..."
+    
+    LARHEN_TOOLS_DIR="$HOME/Larhen_Tools"
+    WORDLISTS_DIR="$LARHEN_TOOLS_DIR/wordlists"
+    
+    mkdir -p "$WORDLISTS_DIR"
+    print_success "Created wordlists directory: $WORDLISTS_DIR"
+    
+    download_and_extract() {
+        local url="$1"
+        local filename="$2"
+        local output_name="$3"
+        
+        print_step "Downloading $filename..."
+        
+        rm -f "$WORDLISTS_DIR/$filename" "$WORDLISTS_DIR/$output_name" 2>/dev/null
+        
+        if command -v wget &> /dev/null; then
+            wget -q --show-progress -O "$WORDLISTS_DIR/$filename" "$url"
+        elif command -v curl &> /dev/null; then
+            curl -L --progress-bar "$url" -o "$WORDLISTS_DIR/$filename"
+        else
+            print_error "No download tool available"
+            return 1
+        fi
+        
+        if [ ! -f "$WORDLISTS_DIR/$filename" ]; then
+            print_error "Download failed"
+            return 1
+        fi
+        
+        print_success "Downloaded $filename"
+        
+        if [[ "$filename" == *.tar.gz ]]; then
+            print_step "Extracting $filename..."
+            
+            TEMP_DIR=$(mktemp -d)
+            
+            if tar -xzf "$WORDLISTS_DIR/$filename" -C "$TEMP_DIR" 2>/dev/null; then
+                kite_file=$(find "$TEMP_DIR" -type f -name "*.kite" | head -1)
+                
+                if [ -n "$kite_file" ]; then
+                    mv "$kite_file" "$WORDLISTS_DIR/$output_name"
+                    print_success "Extracted to $output_name"
+                else
+                    any_file=$(find "$TEMP_DIR" -type f | head -1)
+                    if [ -n "$any_file" ]; then
+                        mv "$any_file" "$WORDLISTS_DIR/$output_name"
+                        print_warning "Using $(basename "$any_file") as $output_name"
+                    else
+                        print_error "No files found in archive"
+                        rm -rf "$TEMP_DIR"
+                        return 1
+                    fi
+                fi
+                
+                rm -rf "$TEMP_DIR"
+                
+                rm -f "$WORDLISTS_DIR/$filename"
+                print_success "Cleaned up $filename"
+                
+            else
+                print_error "Extraction failed"
+                rm -f "$WORDLISTS_DIR/$filename"
+                return 1
+            fi
+        else
+            mv "$WORDLISTS_DIR/$filename" "$WORDLISTS_DIR/$output_name" 2>/dev/null || true
+        fi
+        
+        if [ -f "$WORDLISTS_DIR/$output_name" ] && [ -s "$WORDLISTS_DIR/$output_name" ]; then
+            size=$(du -h "$WORDLISTS_DIR/$output_name" | cut -f1)
+            print_success "$output_name ready ($size)"
+            return 0
+        else
+            print_error "$output_name is missing or empty"
+            return 1
+        fi
+    }
+    
+    declare -A wordlists=(
+        ["routes-large.kite"]="routes-large.kite.tar.gz"
+        ["routes-small.kite"]="routes-small.kite.tar.gz"
+        ["swagger-wordlist.txt"]="swagger-wordlist.txt"
+    )
+    
+    success=0
+    total=0
+    
+    for output in "${!wordlists[@]}"; do
+        filename="${wordlists[$output]}"
+        url="https://wordlists-cdn.assetnote.io/data/kiterunner/$filename"
+        
+        ((total++))
+        
+        if download_and_extract "$url" "$filename" "$output"; then
+            ((success++))
+            ln -sf "$WORDLISTS_DIR/$output" "./$output" 2>/dev/null
+        fi
+        
+        echo
+    done
+    
+    chmod -R 755 "$WORDLISTS_DIR"
+    
+    if [ $success -eq $total ]; then
+        print_success "All $total wordlists downloaded successfully!"
+    else
+        print_warning "Downloaded $success/$total wordlists"
+    fi
+    
+    return $((total - success))
 }
 
 verify_installation() {
     print_step "Verifying installation..."
     
-    missing_tools=()
+    echo
+    echo "Essential Tools:"
+    echo "----------------"
     
-    # Check Go tools
-    go_tools=("assetfinder" "subfinder" "anew" "samoscout" "httpx")
-    for tool in "${go_tools[@]}"; do
+    essential_tools=("assetfinder" "subfinder" "httpx" "python3" "arjun")
+    for tool in "${essential_tools[@]}"; do
         if command -v $tool &> /dev/null; then
-            print_success "$tool is available"
+            echo -e "  ${GREEN}✓${NC} $tool"
         else
-            print_error "$tool is NOT available"
-            missing_tools+=($tool)
+            echo -e "  ${RED}✗${NC} $tool"
         fi
     done
     
-    # Check system tools
-    sys_tools=("curl" "jq" "python3")
-    for tool in "${sys_tools[@]}"; do
+    echo
+    echo "Optional Tools:"
+    echo "---------------"
+    
+    optional_tools=("anew" "samoscout" "kr")
+    for tool in "${optional_tools[@]}"; do
         if command -v $tool &> /dev/null; then
-            print_success "$tool is available"
+            echo -e "  ${GREEN}✓${NC} $tool"
         else
-            print_error "$tool is NOT available"
-            missing_tools+=($tool)
+            echo -e "  ${YELLOW}⚠${NC} $tool"
         fi
     done
     
-    # Check Python module
+    echo
+    echo "Python Modules:"
+    echo "---------------"
+    
     if python3 -c "import colorama" 2>/dev/null; then
-        print_success "colorama Python module is available"
+        echo -e "  ${GREEN}✓${NC} colorama"
     else
-        print_error "colorama Python module is NOT available"
-        missing_tools+=("colorama")
+        echo -e "  ${YELLOW}⚠${NC} colorama"
     fi
     
-    if [ ${#missing_tools[@]} -eq 0 ]; then
-        print_success "All dependencies are installed!"
-        return 0
-    else
-        print_error "Missing tools: ${missing_tools[*]}"
-        return 1
-    fi
+    echo
+    echo "Wordlists:"
+    echo "----------"
+    
+    WORDLISTS_DIR="$HOME/Larhen_Tools/wordlists"
+    wordlist_files=("routes-large.kite" "routes-small.kite" "swagger-wordlist.txt")
+    
+    for wordlist in "${wordlist_files[@]}"; do
+        if [ -f "$WORDLISTS_DIR/$wordlist" ] && [ -s "$WORDLISTS_DIR/$wordlist" ]; then
+            size=$(du -h "$WORDLISTS_DIR/$wordlist" 2>/dev/null | cut -f1 || echo "N/A")
+            echo -e "  ${GREEN}✓${NC} $wordlist ($size)"
+        elif [ -f "$WORDLISTS_DIR/$wordlist" ]; then
+            echo -e "  ${YELLOW}⚠${NC} $wordlist (empty)"
+        else
+            echo -e "  ${RED}✗${NC} $wordlist"
+        fi
+    done
+    
+    echo
 }
 
 show_usage() {
-    print_step "Installation complete!"
+    echo -e "${GREEN}"
+    echo "╔══════════════════════════════════════════════╗"
+    echo "║           INSTALLATION COMPLETE!             ║"
+    echo "╚══════════════════════════════════════════════╝"
+    echo -e "${NC}"
+    echo -e "${CYAN}To use the tool:${NC}"
+    echo "  1. Restart your terminal or run:"
+    echo "     source ~/.bashrc"
+    echo "  2. Run: larhenum"
     echo
-    echo -e "${GREEN}Usage:${NC}"
-    echo "  ./advanced_recon.py                    # Run from current directory"
-    echo "  advanced_recon                         # If symlink was created"
+    echo -e "${CYAN}Wordlists location:${NC}"
+    echo "  ~/Larhen_Tools/wordlists/"
     echo
-    echo -e "${GREEN}Example:${NC}"
-    echo "  advanced_recon"
-    echo "  ./advanced_recon.py"
+    echo -e "${CYAN}Created by: La'Rhen${NC}"
+    echo -e "${CYAN}Version: 1.0.0${NC}"
     echo
-    echo -e "${YELLOW}Note:${NC} Make sure ~/.local/bin is in your PATH if using symlink"
-    echo "  Add this to your ~/.bashrc or ~/.zshrc:"
-    echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+    echo "## If installation failed or something wrong!"
+    echo "## cd /larhenum"
+    echo "## python3 -m venv venv"
+    echo "## source venv/bin/activate"
+    echo "## ./install.sh"
+    echo "##  Finish"
+    echo "## deactivate"
+    
 }
 
 main() {
-    clear
     print_banner
     
-    echo -e "${YELLOW}Advanced Recon Tool Installer${NC}"
-    echo "======================================"
+    echo -e "${YELLOW}Larhenum Recon Tool Installer${NC}"
+    echo "════════════════════════════════════════════"
     echo
     
-    # Check prerequisites
-    if ! check_go; then
-        print_error "Please install Go first: https://golang.org/dl/"
-        exit 1
-    fi
+    check_go || exit 1
+    check_python || exit 1
     
-    if ! check_python; then
-        print_error "Please install Python3 first"
-        exit 1
-    fi
-    
-    # Install dependencies
     install_system_deps
     install_go_tools
     install_python_deps
-    
-    # Setup tool
+    download_kiterunner_wordlists
     setup_tool
     
-    # Verify installation
-    if verify_installation; then
-        print_success "Installation completed successfully!"
-        show_usage
-    else
-        print_error "Installation completed with errors"
-        print_warning "Some tools may not work properly"
-        show_usage
-        exit 1
-    fi
+    echo
+    echo "════════════════════════════════════════════"
+    echo
+    
+    verify_installation
+    
+    echo
+    echo "════════════════════════════════════════════"
+    echo
+    
+    show_usage
 }
 
-# Run main function
 main
