@@ -175,6 +175,104 @@ check_python() {
     fi
 }
 
+install_kiterunner() {
+    print_step "Installing Kiterunner from GitHub release..."
+    
+    if command -v kr &> /dev/null; then
+        kr_version=$(kr version 2>/dev/null | head -1 || echo "")
+        if [ -n "$kr_version" ]; then
+            print_success "Kiterunner is already installed: $kr_version"
+            return 0
+        fi
+    fi
+    
+    KR_VERSION="1.0.2"
+    ARCH=$(uname -m)
+    
+    if [ "$ARCH" == "x86_64" ]; then
+        ARCH="amd64"
+    elif [ "$ARCH" == "aarch64" ] || [ "$ARCH" == "arm64" ]; then
+        ARCH="arm64"
+    else
+        print_error "Unsupported architecture: $ARCH"
+        print_warning "Please install Kiterunner manually"
+        return 1
+    fi
+    
+    KR_TAR="kiterunner_${KR_VERSION}_linux_${ARCH}.tar.gz"
+    KR_URL="https://github.com/assetnote/kiterunner/releases/download/v${KR_VERSION}/${KR_TAR}"
+    
+    print_step "Downloading Kiterunner v${KR_VERSION} for ${ARCH}..."
+    
+    TEMP_DIR=$(mktemp -d)
+    
+    if command -v wget &> /dev/null; then
+        if ! wget -q --show-progress "$KR_URL" -O "$TEMP_DIR/kr.tar.gz"; then
+            print_error "Failed to download Kiterunner"
+            rm -rf "$TEMP_DIR"
+            return 1
+        fi
+    elif command -v curl &> /dev/null; then
+        if ! curl -L --progress-bar "$KR_URL" -o "$TEMP_DIR/kr.tar.gz"; then
+            print_error "Failed to download Kiterunner"
+            rm -rf "$TEMP_DIR"
+            return 1
+        fi
+    else
+        print_error "Cannot download Kiterunner. wget or curl not found."
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+    
+    print_success "Downloaded Kiterunner"
+    
+    print_step "Extracting Kiterunner..."
+    if ! tar -xzf "$TEMP_DIR/kr.tar.gz" -C "$TEMP_DIR" 2>/dev/null; then
+        print_error "Failed to extract Kiterunner"
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+    
+    print_success "Extracted Kiterunner"
+    
+    KR_BINARY=$(find "$TEMP_DIR" -name "kr" -type f | head -1)
+    
+    if [ -n "$KR_BINARY" ] && [ -f "$KR_BINARY" ]; then
+        print_step "Installing Kiterunner binary..."
+        
+        chmod +x "$KR_BINARY"
+        
+        if sudo mv "$KR_BINARY" /usr/local/bin/kr 2>/dev/null; then
+            print_success "Kiterunner installed to /usr/local/bin/kr"
+        else
+            mkdir -p ~/.local/bin
+            mv "$KR_BINARY" ~/.local/bin/kr
+            chmod +x ~/.local/bin/kr
+            print_success "Kiterunner installed to ~/.local/bin/kr"
+        fi
+        
+        print_step "Verifying installation..."
+        if command -v kr &> /dev/null; then
+            kr_version=$(kr version 2>/dev/null | head -1 || echo "v${KR_VERSION}")
+            print_success "Kiterunner installed successfully: $kr_version"
+        else
+            print_warning "Kiterunner binary installed but not in PATH"
+            print_warning "Please add ~/.local/bin to your PATH"
+        fi
+    else
+        print_error "kr binary not found in extracted files"
+        
+        print_step "Checking extracted files..."
+        ls -la "$TEMP_DIR" 2>/dev/null || true
+        
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+    
+    rm -rf "$TEMP_DIR"
+    return 0
+}
+
 install_go_tools() {
     print_step "Installing Go tools..."
     
@@ -186,7 +284,10 @@ install_go_tools() {
         "github.com/tomnomnom/anew@latest"
         "github.com/samogod/samoscout@latest"
         "github.com/projectdiscovery/httpx/cmd/httpx@latest"
-        "github.com/assetnote/kiterunner/cmd/kr@latest"
+        "github.com/lc/gau/v2/cmd/gau@latest"
+        "github.com/projectdiscovery/katana/cmd/katana@latest"
+        "github.com/tomnomnom/waybackurls@latest"
+        "github.com/hakluke/hakrawler@latest"
     )
     
     for tool in "${tools[@]}"; do
@@ -205,6 +306,8 @@ install_go_tools() {
             print_warning "Will continue with installation..."
         fi
     done
+    
+    install_kiterunner
     
     if [ -f ~/.bashrc ]; then
         if ! grep -q "go env GOPATH" ~/.bashrc; then
